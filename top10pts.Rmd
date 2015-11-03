@@ -1,0 +1,79 @@
+---
+title: "Top 10 Seasonal MedDRA PTs in FDA AERS"
+author: "Gary Chung"
+date: "November 2, 2015"
+output: html_document
+runtime: shiny
+---
+
+##### Available PTs for review:
+
+* Lower respiratory tract infection
+* Wrist fracture
+* Lacrimation increased
+* Oedema
+* Sinus congestion
+* Deep vein thrombosis
+* Sneezing
+* Ear infection
+* Repiratory tract congestion
+* Pharyngitis streptococcal
+
+<br>
+
+*****
+
+## Select MedDRA Preferred Term
+
+```{r, echo=FALSE, results="asis", message=F}
+
+load(file="Data/forRmd.Rdata")
+require(dygraphs)
+require(DT)
+
+inputPanel(
+  selectInput("thePT", label = "Preferred Term", choices = pts,
+              selected = pts[3], width = '400')
+)
+
+renderDygraph({
+  dygraph(y.xts[[which(pts==input$thePT)]], main="Overall", group="jamby") %>%
+    dyOptions(colors = RColorBrewer::brewer.pal(3, "Set1")) %>%
+    dyRoller(rollPeriod=3) %>% dyLegend(width=450) %>%
+    dyRangeSelector() %>%
+    dyLimit(0, color = "black", strokePattern="dotted") %>%
+    dySeries("Total Events", strokeWidth=1.5) %>%
+    dySeries("Seasonality", strokePattern="dashed") %>%
+    dySeries("Trend", strokePattern="dashed") %>%
+    dyHighlight(highlightCircleSize=5,
+                highlightSeriesOpts=list(strokeWidth=3))
+})
+
+renderDygraph({
+  dygraph(z.xts[[which(pts==input$thePT)]], main="Top 5 Indications", group="jamby") %>%
+    dyOptions(colors = RColorBrewer::brewer.pal(5, "Set2")) %>%
+    dyRoller(rollPeriod = 3) %>% dyLegend(width=450) %>%
+    dyHighlight(highlightCircleSize = 5, 
+                highlightSeriesBackgroundAlpha = 0.2,
+                highlightSeriesOpts = list(strokeWidth = 3))
+})
+  
+renderDygraph({
+  dygraph(a.xts[[which(pts==input$thePT)]], main="Top 5 Drugs", group="jamby") %>%
+    dyOptions(colors = RColorBrewer::brewer.pal(5, "Set2")) %>%
+    dyRoller(rollPeriod = 3) %>% dyLegend(width=450) %>%
+    dyHighlight(highlightCircleSize = 5, 
+                highlightSeriesBackgroundAlpha = 0.2,
+                highlightSeriesOpts = list(strokeWidth = 3))
+})
+
+```
+
+<br>
+Access the original presentation:
+<br>
+[gary-chung.com/seasonFDA](http://gary-chung.com/seasonFDA)
+<br><br>
+![Git](https://dl.dropboxusercontent.com/u/3991613/seasonFDA/git.png)
+<br>
+[https://github.com/gunkadoodah/seasonFDA](https://github.com/gunkadoodah/seasonFDA)

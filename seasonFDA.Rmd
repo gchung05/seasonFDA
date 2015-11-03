@@ -1,0 +1,557 @@
+---
+title: "Seasonality Hidden Within FDA AERS"
+author: "Gary Chung"
+date: "November 3, 2015"
+output: html_document
+runtime: shiny
+---
+
+```{r, echo=FALSE, results="asis", message=F}
+load(file="Data/forRmd.Rdata")
+require(googleVis)
+require(dygraphs)
+require(jsonlite)
+require(DT)
+require(knitr)
+require(curl)
+opts_chunk$set(comment = NA)
+```
+
+*Note:* This is a published interactive report. 
+<br>
+Follow along at [gary-chung.com/seasonFDA](http://gary-chung.com/seasonFDA)
+
+<br>
+
+******
+
+<br><br><br>
+
+# It Spikes Every Summer, But Why?
+
+![Phantom Toll Booths](https://dl.dropboxusercontent.com/u/3991613/seasonFDA/Phantom%20Toll%20Booths.png)
+
+* Top Issue: Dropped Calls
+* Typically 400 Dropped Calls/Month
+
+<br>
+
+**The Statistician, Phantom Toll Booths:**
+
+> We typically see 250 more Dropped Calls in the summer than in the winter. Why?
+
+### Phantom Toll Booths Dropped Calls 2007-2015
+
+![Dropped Calls Per Month](https://dl.dropboxusercontent.com/u/3991613/seasonFDA/Dropped%20Calls.png)
+
+<br>
+**To see the full story:**
+<br>
+[<img src="https://dl.dropboxusercontent.com/u/3991613/seasonFDA/ASAlogo_color.jpg">](http://community.amstat.org/oclb/announcements)
+<br>
+[Orange County ASA Chapter News Archives](http://community.amstat.org/oclb/announcements).
+<br>
+Scroll down to Fall Quarterly Social 2015.
+
+<br>
+
+*****
+
+<br><br><br>
+
+# Where Else Might This Happen?
+
+![Sinusoidal](https://dl.dropboxusercontent.com/u/3991613/seasonFDA/sinusoid.png)
+<br>
+<span style="font-size: 200%">+</span>
+<br>
+![FDA](https://dl.dropboxusercontent.com/u/3991613/seasonFDA/FDA.png)
+<br>
+<span style="font-size: 150%">Adverse Events Reporting System (AERS)</span>
+<br>
+<span style="font-size: 200%">+</span>
+<br>
+![OpenFDA](https://dl.dropboxusercontent.com/u/3991613/seasonFDA/open-fda-logo.png)
+
+<br>
+
+*****
+
+<br><br><br>
+
+# About OpenFDA
+
+![OpenFDA](https://dl.dropboxusercontent.com/u/3991613/seasonFDA/open-fda-logo.png)
+
+<br>
+
+OpenFDA Last Updated:
+
+```{r, echo=FALSE, message=F}
+data1 <- fromJSON("https://api.fda.gov/drug/label.json")
+cat(data1$meta$last_updated)
+```
+
+Total Reported Events:
+
+```{r, echo=FALSE, message=F}
+data1 <- fromJSON(paste0("https://api.fda.gov/drug/event.json?",
+                         "api_key=szuDIP4PDwueFy4Ol8Zfxg4Q5O4hNNHkZs0fDY4o&", 
+                         "search=receivedate:[19000101+TO+",
+                         format(Sys.Date(), "%Y%m%d"), "]"))
+cat(data1$meta$results$total)
+```
+
+Total Reported Events from April 2011 to June 2015:
+
+```{r, echo=FALSE, message=F}
+data1 <- fromJSON(paste0("https://api.fda.gov/drug/event.json?",
+                         "api_key=szuDIP4PDwueFy4Ol8Zfxg4Q5O4hNNHkZs0fDY4o&", 
+                         "search=receivedate:[20110401+TO+20150630]"))
+cat(data1$meta$results$total)
+```
+
+Data are pulled **LIVE** from the [Open FDA API](https://open.fda.gov).
+
+<br>
+
+*****
+
+<br><br><br>
+
+# About AERS 
+
+![FDA](https://dl.dropboxusercontent.com/u/3991613/seasonFDA/FDA.png)
+<br>
+<span style="font-size: 150%">Adverse Events Reporting System (AERS)</span>
+<br>
+<br>
+
+### Why From April 2011 to June 2015?
+
+As of November 1, 2015, these are all available quarterly files from [FDA.gov](http://www.fda.gov).
+<br><br>
+Quarterly files for download here:
+<br>
+[http://www.fda.gov/Drugs/GuidanceComplianceRegulatoryInformation/Surveillance/AdverseDrugEffects/ucm082193.htm](http://www.fda.gov/Drugs/GuidanceComplianceRegulatoryInformation/Surveillance/AdverseDrugEffects/ucm082193.htm)
+
+<br>
+
+### Key Facts About the Dataset
+
+<br>
+
+#### Total Records
+
+```{r, echo=FALSE, results="asis", message=F}
+datatable(data.frame(Type=c("MedDRA PT's", "Drugs", "Indications"),
+                     Count=c(7580275, 8354013, 5287413)), 
+          rownames=F, options = list(dom = 't'))
+```
+
+<br>
+
+#### Unique Counts
+
+```{r, echo=FALSE, results="asis", message=F}
+datatable(data.frame(Type=c("MedDRA PT's", "Drugs", "Indications"),
+                     Count=c(16357, 231661, 9364)), 
+          rownames=F, options = list(dom = 't'))
+```
+
+<br>
+
+#### Top 6 MedDRA PT's
+
+```{r, echo=FALSE, results="asis", message=F}
+datatable(data.frame(PT=c("Drug ineffective", "Death", "Nausea", "Fatigue",
+                           "Headache", "Pain"),
+                     Count=c(153960, 110438, 96461, 93090, 80752, 79622)), 
+          rownames=F, options = list(dom = 't'))
+```
+
+<br>
+
+#### Top 6 Drugs Cited
+
+```{r, echo=FALSE, results="asis", message=F}
+datatable(data.frame(Drug=c("HUMIRA", "REVLIMID", "ENBREL", "Enbrel",
+                           "AVONEX", "TYSABRI"),
+                     Count=c(162530, 71562, 71160, 70687, 70198, 62855)), 
+          rownames=F, options = list(dom = 't'))
+```
+
+<br>
+
+#### Top 6 Indications Cited
+
+```{r, echo=FALSE, results="asis", message=F}
+datatable(data.frame(Indication=c("Unknown indication", "Multiple sclerosis", 
+                           "Rheumatoid arthritis", "Diabetes mellitus",
+                           "Hypertension", "Peritoneal dialysis"),
+                     Count=c(1347446, 219052, 190834, 149482, 127056, 116028)), 
+          rownames=F, options = list(dom = 't'))
+```
+
+<br>
+
+##### Top 6 Manufacturers Cited
+
+```{r, echo=FALSE, results="asis", message=F}
+datatable(data.frame(Manufacturer=c("PFIZER", "AMGEN", 
+                           "GLAXOSMITHKLINE", "MERCK",
+                           "ABBVIE", "JANSSEN"),
+                     Count=c(186117, 174357, 164675, 131998, 128649, 128345)), 
+          rownames=F, options = list(dom = 't'))
+```
+
+<br>
+
+#### Reporting is Heavily Skewed
+
+* There is a huge right-tail of durgs
+    + 231,661 unique drugs across 9,364 unique indications
+    + ~25 drugs per indication!
+* The two drugs Humira and Enbrel account for over 300,000 events alone
+    + This leaves <35 events for the remaining 230,000+ drugs
+
+<br>
+
+*****
+
+<br><br><br>
+
+## The Analysis
+
+<br>
+
+### Filtering Factors
+
+* Dropped all PT's reported fewer than 1,000 times
+* Kept only USA-reported events
+
+<br>
+
+### Statistical Approach
+
+* Seasonal Trend Decomposition Using LOESS (1)
+    + Analyzed at several settings of trending window, seasonality window
+    + Ran on 690 qualifying PT's
+* Measuring Criteria: Proportion of IQR explain by seasonal decomposition
+    + Narrowed down to a list of 50 PT's
+* Visually reviewed 50 to obtain final list of 10 PT's
+
+(1) [Cleveland, et al. 1990](http://cs.wellesley.edu/~cs315/Papers/stl%20statistical%20model.pdf)
+(1) [STL Decomposition](https://www.otexts.org/fpp/6/5)
+
+<br>
+
+*****
+
+<br><br><br>
+
+## The Top 3 Most Interesting MedDRA PT's
+
+<br><br>
+
+### Pharyngitis Streptococcal
+
+```{r, echo=FALSE, results="asis", message=F, fig.width=6, fig.height=3}
+i <- 10
+cat("\n")
+dygraph(y.xts[[i]], main="Overall", group="jamby") %>%
+  dyOptions(colors = RColorBrewer::brewer.pal(3, "Set1")) %>%
+  dyRoller(rollPeriod=3) %>% dyLegend(width=450) %>%
+  dyRangeSelector() %>%
+  dyLimit(0, color = "black", strokePattern="dotted") %>%
+  dySeries("Total Events", strokeWidth=1.5) %>%
+  dySeries("Seasonality", strokePattern="dashed") %>%
+  dySeries("Trend", strokePattern="dashed") %>%
+  dyHighlight(highlightCircleSize=5,
+              highlightSeriesOpts=list(strokeWidth=3))
+cat("\n")
+dygraph(z.xts[[i]], main="Top 5 Indications", group="jamby") %>%
+  dyOptions(colors = RColorBrewer::brewer.pal(5, "Set2")) %>%
+  dyRoller(rollPeriod = 3) %>% dyLegend(width=450) %>%
+  dyHighlight(highlightCircleSize = 5, 
+              highlightSeriesBackgroundAlpha = 0.2,
+              highlightSeriesOpts = list(strokeWidth = 3))
+cat("\n")
+dygraph(a.xts[[i]], main="Top 5 Drugs", group="jamby") %>%
+  dyOptions(colors = RColorBrewer::brewer.pal(5, "Set2")) %>%
+  dyRoller(rollPeriod = 3) %>% dyLegend(width=450) %>%
+  dyHighlight(highlightCircleSize = 5, 
+              highlightSeriesBackgroundAlpha = 0.2,
+              highlightSeriesOpts = list(strokeWidth = 3))
+
+```
+
+<br> 
+
+##### Thoughts
+
+* It is generally known that strep can occur any time, but peaks in winter and spring. 
+* Rheumatoid arthritis exhibits a **second** peak in summer/fall.
+* There have been suggestions of a link between strep and RA, but scientific evidence is lacking (1).
+    + Cleveland Clinic and the Arthritis Foundation only mention a link between RA and infection.
+
+(1) [http://www.livestrong.com/article/203895-causes-of-an-outbreak-of-rheumatoid-arthritis/](http://www.livestrong.com/article/203895-causes-of-an-outbreak-of-rheumatoid-arthritis/)
+
+<br>
+
+### Pharyngitis Streptococcal
+#### Sankey Diagram
+
+```{r, echo=FALSE, results="asis", message=F}
+i <- 10
+gSet <- ten.s[[i]][ten.s[[i]]$value > 2, ]
+names(gSet)[names(gSet)=="value"] <- "Reported Events"
+sankey <- gvisSankey(gSet, 
+                     from="drugname", to="indi_pt", weight="Reported Events",
+                     options=list(width=568, height=500,
+                                  sankey="{link: {color: { fill: '#d799ae' } },
+                                  node: { color: { fill: '#a61d4c' },
+                                  label: { color: 'black', fontSize: 16 } }}"))
+print(sankey, tag='chart')
+```
+
+<br> 
+
+##### Thoughts
+
+* We may be inclined to say the off-season peaks are due to Humira and Enbrel.
+* Psoriasis is primarily treated by Humira and Enbrel, however psoriasis does not appear to show off-season peaks.
+
+<br>
+
+*****
+
+<br><br>
+
+### Sinus Congestion
+
+```{r, echo=FALSE, results="asis", message=F, fig.width=6, fig.height=3}
+i <- 5
+cat("\n")
+dygraph(y.xts[[i]], main="Overall", group="jamby") %>%
+  dyOptions(colors = RColorBrewer::brewer.pal(3, "Set1")) %>%
+  dyRoller(rollPeriod=3) %>% dyLegend(width=450) %>%
+  dyRangeSelector() %>%
+  dyLimit(0, color = "black", strokePattern="dotted") %>%
+  dySeries("Total Events", strokeWidth=1.5) %>%
+  dySeries("Seasonality", strokePattern="dashed") %>%
+  dySeries("Trend", strokePattern="dashed") %>%
+  dyHighlight(highlightCircleSize=5,
+              highlightSeriesOpts=list(strokeWidth=3))
+cat("\n")
+dygraph(z.xts[[i]], main="Top 5 Indications", group="jamby") %>%
+  dyOptions(colors = RColorBrewer::brewer.pal(5, "Set2")) %>%
+  dyRoller(rollPeriod = 3) %>% dyLegend(width=450) %>%
+  dyHighlight(highlightCircleSize = 5, 
+              highlightSeriesBackgroundAlpha = 0.2,
+              highlightSeriesOpts = list(strokeWidth = 3))
+cat("\n")
+dygraph(a.xts[[i]], main="Top 5 Drugs", group="jamby") %>%
+  dyOptions(colors = RColorBrewer::brewer.pal(5, "Set2")) %>%
+  dyRoller(rollPeriod = 3) %>% dyLegend(width=450) %>%
+  dyHighlight(highlightCircleSize = 5, 
+              highlightSeriesBackgroundAlpha = 0.2,
+              highlightSeriesOpts = list(strokeWidth = 3))
+
+```
+
+<br> 
+
+##### Thoughts
+
+* Regular, expected wintertime peak
+* Crohn's Disease shows markedly different behavior
+    + Peaks in July 2012 and May 2014
+    + Valley in Winter 2013
+
+<br>
+
+### Sinus Congestion
+#### Sankey Diagram
+
+```{r, echo=FALSE, results="asis", message=F}
+i <- 5
+gSet <- ten.s[[i]][ten.s[[i]]$value > 2, ]
+names(gSet)[names(gSet)=="value"] <- "Reported Events"
+sankey <- gvisSankey(gSet, 
+                     from="drugname", to="indi_pt", weight="Reported Events",
+                     options=list(width=568, height=500,
+                                  sankey="{link: {color: { fill: '#d799ae' } },
+                                  node: { color: { fill: '#a61d4c' },
+                                  label: { color: 'black', fontSize: 16 } }}"))
+print(sankey, tag='chart')
+```
+
+<br> 
+
+##### Thoughts
+
+* Humira is prescribed for many indications, but it is exclusive for Crohn's Disease
+* Community forums postulate a link between sinusitis and IBD (Crohn's & Colitis) (1, 2)
+* Zois, et al. 2008 (3) presents a sytematic review of all articles linking ENT complications to IBD and concludes:
+
+> ENT manifestations should never be evaluated separately or underestimated in IBD patients.
+
+* Still does not explain spring/summer peak of sinusitis.
+
+(1) [https://www.crohnsforum.com/showthread.php?t=5495](https://www.crohnsforum.com/showthread.php?t=5495)
+(2) [http://www.healingwell.com/community/default.aspx?f=17&m=899891](http://www.healingwell.com/community/default.aspx?f=17&m=899891)
+(3) [http://www.annalsgastro.gr/index.php/annalsgastro/article/view/621](http://www.annalsgastro.gr/index.php/annalsgastro/article/view/621)
+
+<br>
+
+*****
+
+<br><br>
+
+### Ear Infection
+
+```{r, echo=FALSE, results="asis", message=F, fig.width=6, fig.height=3}
+i <- 8
+cat("\n")
+dygraph(y.xts[[i]], main="Overall", group="jamby") %>%
+  dyOptions(colors = RColorBrewer::brewer.pal(3, "Set1")) %>%
+  dyRoller(rollPeriod=3) %>% dyLegend(width=450) %>%
+  dyRangeSelector() %>%
+  dyLimit(0, color = "black", strokePattern="dotted") %>%
+  dySeries("Total Events", strokeWidth=1.5) %>%
+  dySeries("Seasonality", strokePattern="dashed") %>%
+  dySeries("Trend", strokePattern="dashed") %>%
+  dyHighlight(highlightCircleSize=5,
+              highlightSeriesOpts=list(strokeWidth=3))
+cat("\n")
+dygraph(z.xts[[i]], main="Top 5 Indications", group="jamby") %>%
+  dyOptions(colors = RColorBrewer::brewer.pal(5, "Set2")) %>%
+  dyRoller(rollPeriod = 3) %>% dyLegend(width=450) %>%
+  dyHighlight(highlightCircleSize = 5, 
+              highlightSeriesBackgroundAlpha = 0.2,
+              highlightSeriesOpts = list(strokeWidth = 3))
+cat("\n")
+dygraph(a.xts[[i]], main="Top 5 Drugs", group="jamby") %>%
+  dyOptions(colors = RColorBrewer::brewer.pal(5, "Set2")) %>%
+  dyRoller(rollPeriod = 3) %>% dyLegend(width=450) %>%
+  dyHighlight(highlightCircleSize = 5, 
+              highlightSeriesBackgroundAlpha = 0.2,
+              highlightSeriesOpts = list(strokeWidth = 3))
+
+```
+
+<br> 
+
+##### Thoughts
+
+* Cyclical, _not seasonal_, behavior in overall signal.
+* The cyclical behavior in rheumatoid arthritis is linked to the summation of Humira and Enbrel.
+* This cyclical behavior is weaker but still apparent with Crohn's and psoriasis.
+
+<br>
+
+### Ear Infection
+#### Sankey Diagram
+
+```{r, echo=FALSE, results="asis", message=F}
+i <- 8
+gSet <- ten.s[[i]][ten.s[[i]]$value > 2, ]
+names(gSet)[names(gSet)=="value"] <- "Reported Events"
+sankey <- gvisSankey(gSet, 
+                     from="drugname", to="indi_pt", weight="Reported Events",
+                     options=list(width=568, height=500,
+                                  sankey="{link: {color: { fill: '#d799ae' } },
+                                  node: { color: { fill: '#a61d4c' },
+                                  label: { color: 'black', fontSize: 16 } }}"))
+print(sankey, tag='chart')
+```
+
+<br> 
+
+##### Thoughts
+
+* Median age of ear infections is 52 years (compared to 58 overall)
+* Ear infection population is 78% female (compared to 69% female overall)
+* Data mining from eHealthMe (1) has picked up on the ear infection-rheumatoid arthritis link.
+* But with similar behavior across multiple indications, the drug-to-event relationship is more convincing than the indication-to-event
+
+(1) [http://www.ehealthme.com/cs/rheumatoid+arthritis/ear+infection](http://www.ehealthme.com/cs/rheumatoid+arthritis/ear+infection)
+
+<br>
+
+******
+
+<br><br><br>
+
+## Concluding Thoughts
+
+<br>
+
+#### Seasonality of Events in AERS Tells Us:
+
+* An increase in drug-events can be due to known public health phenomena.
+* If a drug-event goes against expected seasonality, investigate!
+
+<br>
+
+#### Great Storytelling Provokes Interest
+
+* Balance of Familiarity and Intrigue
+
+<br>
+
+#### Effective Visualization Leverages the Human Factor
+
+* Balance of Author-Driven and Reader-Driven (1)
+
+<br>
+
+##### The Martini Glass
+
+![Martini Glass](https://dl.dropboxusercontent.com/u/3991613/seasonFDA/martiniglass.png)
+
+##### The Interactive Slideshow
+
+![Interactive Slideshow](https://dl.dropboxusercontent.com/u/3991613/seasonFDA/interactiveslideshow.png)
+
+##### The Drill-Down
+
+![Drill-Down](https://dl.dropboxusercontent.com/u/3991613/seasonFDA/drilldown.png)
+
+(1) [http://vis.stanford.edu/papers/narrative](http://vis.stanford.edu/papers/narrative)
+
+<br>
+
+******
+
+<br><br><br>
+
+## Want to See More? 
+
+[Click here to see more](https://gchung.shinyapps.io/top10pts)
+
+##### More MedDRA PTs for review:
+
+* Lower respiratory tract infection
+* Wrist fracture
+* Lacrimation increased
+* Oedema
+* Sinus congestion
+* Deep vein thrombosis
+* Sneezing
+* Ear infection
+* Repiratory tract congestion
+* Pharyngitis streptococcal
+
+[Click here to see more PTs](https://gchung.shinyapps.io/top10pts)
+
+<br>
+
+*****
+
+<br>
+
+![Git](https://dl.dropboxusercontent.com/u/3991613/seasonFDA/git.png)
+<br>
+[https://github.com/gunkadoodah/seasonFDA](https://github.com/gunkadoodah/seasonFDA)
